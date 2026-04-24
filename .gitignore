@@ -1,0 +1,27 @@
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.local
+
+# ML model files (too large for git)
+*.pth
+*.onnx
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/settings.json
+.idea/
+
+# Logs
+*.log
+npm-debug.log*
