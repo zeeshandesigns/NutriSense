@@ -5,6 +5,11 @@ __pycache__/
 .env
 .env.local
 
+# Virtual environments
+venv/
+.venv/
+env/
+
 # ML model files (too large for git)
 *.pth
 *.onnx

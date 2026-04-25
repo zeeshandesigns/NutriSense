@@ -1,6 +1,6 @@
 import requests
 
-from config import GEMINI_API_KEY
+from config import GEMINI_API_KEY, MOCK_MODE
 
 GEMINI_URL = (
     "https://generativelanguage.googleapis.com/v1beta/models/"
@@ -22,11 +22,32 @@ SYSTEM = (
     "Do not mention specific gram weights; use phrases like 'a good source of protein'."
 )
 
+_MOCK_INSIGHTS = {
+    "muscle_gain": (
+        "{dish} is a high-protein staple of Pakistani cuisine, rich in slow-digested "
+        "meat or legumes that support muscle recovery. It pairs well with roti or rice "
+        "for a complete post-workout meal."
+    ),
+    "weight_loss": (
+        "{dish} is a deeply flavourful South Asian dish. Enjoying a moderate portion "
+        "alongside a fresh salad is a great way to stay satisfied without overindulging."
+    ),
+    "curious": (
+        "{dish} is a beloved dish in Pakistani and South Asian households, "
+        "traditionally slow-cooked to develop rich, layered flavours. "
+        "It's a wonderful way to experience the depth of desi cuisine."
+    ),
+}
+
 
 def generate_insight(food_label: str, nutrition: dict, user_goal: str = "curious") -> str:
     dish = food_label.replace("_", " ").title()
-    goal_note = GOAL_CONTEXT.get(user_goal, GOAL_CONTEXT["curious"])
 
+    if MOCK_MODE:
+        template = _MOCK_INSIGHTS.get(user_goal, _MOCK_INSIGHTS["curious"])
+        return template.format(dish=dish)
+
+    goal_note = GOAL_CONTEXT.get(user_goal, GOAL_CONTEXT["curious"])
     prompt = (
         f"{SYSTEM}\n\n"
         f"Food: {dish}\n"
@@ -37,12 +58,10 @@ def generate_insight(food_label: str, nutrition: dict, user_goal: str = "curious
         f"Goal context: {goal_note}\n\n"
         "Write the insight now:"
     )
-
     payload = {
         "contents": [{"role": "user", "parts": [{"text": prompt}]}],
         "generationConfig": {"maxOutputTokens": 150, "temperature": 0.7},
     }
-
     try:
         resp = requests.post(GEMINI_URL, json=payload, timeout=10)
         resp.raise_for_status()
