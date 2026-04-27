@@ -1,0 +1,31 @@
+services:
+  - type: web
+    name: nutrisense-api
+    runtime: python
+    rootDir: backend
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    plan: free
+    envVars:
+      - key: MOCK_MODE
+        value: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_SERVICE_KEY
+        sync: false
+      - key: MODEL_PATH
+        value: ./data/model.onnx
+      - key: CLASS_INDEX_PATH
+        value: ./data/class_index.json
+      - key: NUTRITION_DB_PATH
+        value: ./data/nutrition_db.json
+      - key: GRADCAM_INDEX_PATH
+        value: ./data/gradcam_index.json
+      - key: CONFIDENCE_THRESHOLD
+        value: "0.70"
+    disk:
+      name: model-data
+      mountPath: /opt/render/project/src/backend/data
+      sizeGB: 1
