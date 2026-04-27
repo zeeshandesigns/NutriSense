@@ -2,7 +2,7 @@ import axios from 'axios'
 import { useEffect, useRef, useState } from 'react'
 import { supabase } from '../lib/supabase'
 
-interface Message { role: 'user' | 'model'; text: string }
+interface Message { role: 'user' | 'assistant'; text: string }
 
 const SUGGESTED = [
   'Is karahi good for muscle gain?',
@@ -11,17 +11,21 @@ const SUGGESTED = [
   'Is nihari heavy for dinner?',
 ]
 
+const OPENROUTER_URL   = 'https://openrouter.ai/api/v1/chat/completions'
+const OPENROUTER_MODEL = 'qwen/qwen-2.5-72b-instruct'
+
 export default function Chatbot() {
   const [messages, setMessages] = useState<Message[]>([])
   const [input, setInput] = useState('')
   const [loading, setLoading] = useState(false)
   const [profile, setProfile] = useState<any>(null)
   const bottomRef = useRef<HTMLDivElement>(null)
-  const geminiKey = import.meta.env.VITE_GEMINI_KEY
+  const apiKey = import.meta.env.VITE_OPENROUTER_KEY
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data: { user } }) => {
-      if (user) supabase.from('profiles').select('*').eq('id', user.id).single().then(({ data }) => setProfile(data))
+      if (user) supabase.from('profiles').select('*').eq('id', user.id).single()
+        .then(({ data }) => setProfile(data))
     })
   }, [])
 
@@ -29,20 +33,49 @@ export default function Chatbot() {
 
   async function send(text: string) {
     if (!text.trim() || loading) return
+
     const updated: Message[] = [...messages, { role: 'user', text }]
-    setMessages(updated); setInput(''); setLoading(true)
+    setMessages(updated)
+    setInput('')
+    setLoading(true)
+
     const goal = profile?.goal ?? 'curious'
-    const sys = `You are a friendly South Asian food and nutrition assistant. User's goal: ${goal.replace('_', ' ')}. Restrictions: ${profile?.restrictions?.join(', ') || 'none'}. Answer in 2-4 sentences. Focus on Pakistani/desi food. Never be judgmental.`
+    const restrictions = profile?.restrictions?.join(', ') || 'none'
+    const systemPrompt = (
+      `You are a friendly South Asian food and nutrition assistant. ` +
+      `User's goal: ${goal.replace('_', ' ')}. Restrictions: ${restrictions}. ` +
+      `Answer in 2-4 sentences. Focus on Pakistani/desi food. Never be judgmental.`
+    )
+
     try {
-      const GEMINI_URL = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey}`
-      const { data } = await axios.post(GEMINI_URL, {
-        contents: [{ role: 'user', parts: [{ text: sys }] }, ...updated.map(m => ({ role: m.role, parts: [{ text: m.text }] }))],
-        generationConfig: { maxOutputTokens: 200, temperature: 0.7 },
-      })
-      setMessages(p => [...p, { role: 'model', text: data.candidates[0].content.parts[0].text }])
+      const { data } = await axios.post(
+        OPENROUTER_URL,
+        {
+          model: OPENROUTER_MODEL,
+          messages: [
+            { role: 'system', content: systemPrompt },
+            ...updated.map(m => ({ role: m.role, content: m.text })),
+          ],
+          max_tokens: 200,
+          temperature: 0.7,
+        },
+        {
+          headers: {
+            Authorization: `Bearer ${apiKey}`,
+            'Content-Type': 'application/json',
+            'HTTP-Referer': 'https://nutrisense.vercel.app',
+            'X-Title': 'NutriSense AI',
+          },
+          timeout: 15000,
+        },
+      )
+      const reply = data.choices[0].message.content
+      setMessages(prev => [...prev, { role: 'assistant', text: reply }])
     } catch {
-      setMessages(p => [...p, { role: 'model', text: 'Sorry, I could not reach the AI right now.' }])
-    } finally { setLoading(false) }
+      setMessages(prev => [...prev, { role: 'assistant', text: 'Sorry, I could not reach the AI right now.' }])
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -62,19 +95,28 @@ export default function Chatbot() {
         )}
         {messages.map((m, i) => (
           <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs rounded-2xl px-4 py-2 text-sm ${m.role === 'user' ? 'bg-brand-700 text-white' : 'bg-gray-100'}`}>
+            <div className={`max-w-sm rounded-2xl px-4 py-2 text-sm ${
+              m.role === 'user' ? 'bg-brand-700 text-white' : 'bg-gray-100 text-gray-800'
+            }`}>
               {m.text}
             </div>
           </div>
         ))}
-        {loading && <div className="flex justify-start"><div className="bg-gray-100 rounded-2xl px-4 py-2 text-sm text-gray-400">Thinking…</div></div>}
+        {loading && (
+          <div className="flex justify-start">
+            <div className="bg-gray-100 rounded-2xl px-4 py-2 text-sm text-gray-400">Thinking…</div>
+          </div>
+        )}
         <div ref={bottomRef} />
       </div>
       <form onSubmit={e => { e.preventDefault(); send(input) }} className="flex gap-2">
-        <input value={input} onChange={e => setInput(e.target.value)} placeholder="Ask about your food…"
+        <input value={input} onChange={e => setInput(e.target.value)}
+          placeholder="Ask about your food…"
           className="flex-1 border rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-brand-500" />
         <button type="submit" disabled={loading || !input.trim()}
-          className="bg-brand-700 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-brand-800">Send</button>
+          className="bg-brand-700 text-white px-4 py-2 rounded-lg text-sm disabled:opacity-50 hover:bg-brand-800">
+          Send
+        </button>
       </form>
     </div>
   )
