@@ -4,10 +4,13 @@ import react from '@vitejs/plugin-react'
 export default defineConfig({
   plugins: [react()],
   build: {
-    // Code splitting keeps each chunk small — avoids OOM in rolldown
-    rolldownOptions: {
+    rollupOptions: {
       output: {
-        codeSplitting: true,
+        manualChunks: {
+          vendor: ['react', 'react-dom', 'react-router-dom'],
+          charts: ['recharts'],
+          supabase: ['@supabase/supabase-js'],
+        },
       },
     },
   },
