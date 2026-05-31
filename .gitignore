@@ -1,0 +1,50 @@
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+.env
+.env.local
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# ML model files (too large for git) — except the deployed production model
+*.pth
+*.onnx
+!backend/data/model.onnx
+
+# Build outputs
+dist/
+build/
+.expo/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE / tooling
+.vscode/settings.json
+.idea/
+.claude/
+
+# Logs
+*.log
+npm-debug.log*
+
+# Kaggle outputs (large + transient)
+kaggle_outputs/
+
+# Private / internal docs — keep local, not for public repo
+docs/SRS.md
+docs/CONTEXT.md
+docs/BACKEND.md
+docs/FRONTEND.md
+docs/KAGGLE.md
+docs/TEST_CASES.md
+docs/TESTING.md
+docs/render.md
+docs/vercel.md
+docs/PREVIVA.md
+outputs/
